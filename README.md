@@ -10,3 +10,5 @@ This repository contains two Snakemake workflows used for whole-genome resequenc
 ## Status
 
 Under development.
+
+Each workflow is independent. See the corresponding `README.md` and `config/config.yaml` before running.
