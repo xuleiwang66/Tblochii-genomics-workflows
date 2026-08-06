@@ -1,0 +1,13 @@
+channels: [conda-forge, bioconda]
+dependencies:
+  - r-base
+  - r-data.table
+  - r-matrix
+  - r-survival
+  - r-gmmat=1.4.1
+  - r-coxmeg=1.1.5
+  - r-nloptr
+  - plink2
+  - plink
+  - gemma=0.98.5
+  - python=3.11

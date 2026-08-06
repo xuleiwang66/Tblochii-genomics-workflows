@@ -1,0 +1,123 @@
+configfile: "config/config.yaml"
+
+import csv
+import math
+from pathlib import Path
+
+
+def read_tsv(path):
+    rows = []
+    with open(path, encoding="utf-8-sig") as handle:
+        for line in handle:
+            if line.startswith("#") or not line.strip():
+                continue
+            rows.append(line.rstrip("\n").split("\t"))
+    if not rows:
+        return [], []
+    return rows[0], rows[1:]
+
+
+def read_samples(path):
+    header, rows = read_tsv(path)
+    if not header:
+        return {}
+    idx = {name: i for i, name in enumerate(header)}
+    required = {"sample_id", "r1", "r2"}
+    missing = required - set(idx)
+    if missing:
+        raise ValueError(f"Missing samples.tsv columns: {sorted(missing)}")
+    return {
+        row[idx["sample_id"]]: {
+            "r1": row[idx["r1"]],
+            "r2": row[idx["r2"]],
+        }
+        for row in rows
+        if row and row[idx["sample_id"]]
+    }
+
+
+def read_lines(path):
+    with open(path, encoding="utf-8") as handle:
+        return [x.strip() for x in handle if x.strip() and not x.startswith("#")]
+
+
+SAMPLE_INFO = read_samples(config["samples"])
+SAMPLES = sorted(SAMPLE_INFO)
+CHROMOSOMES = read_lines(config["chromosomes"])
+REF = config["reference"]["fasta"]
+GFF = config["reference"].get("gff3", "")
+FUNCTIONAL_ANNOTATION = config["reference"].get("functional_annotation", "")
+PLOIDY = int(config["analysis"]["ploidy"])
+MIN_AN = math.ceil(len(SAMPLES) * PLOIDY * float(config["analysis"]["stage4_call_rate"])) if SAMPLES else 0
+K_VALUES = list(range(
+    int(config["population_structure"]["admixture_k_min"]),
+    int(config["population_structure"]["admixture_k_max"]) + 1,
+))
+
+
+def fastq_for(wildcards):
+    return SAMPLE_INFO[wildcards.sample][wildcards.read]
+
+
+include: "workflow/rules/reference.smk"
+include: "workflow/rules/alignment.smk"
+include: "workflow/rules/variant_calling.smk"
+include: "workflow/rules/variant_filtering.smk"
+include: "workflow/rules/genotype_refinement.smk"
+include: "workflow/rules/plink_qc.smk"
+include: "workflow/rules/population_structure.smk"
+include: "workflow/rules/continuous_gwas.smk"
+include: "workflow/rules/binary_cox_gwas.smk"
+include: "workflow/rules/integration.smk"
+
+FINAL_OUTPUTS = [
+    "results/qc/wgs_sample_qc_summary.tsv",
+    "results/qc/variant_filtering_summary.tsv",
+    "results/qc/plink_qc_summary.tsv",
+    "results/plink/common_qc.pgen",
+    "results/plink/common_qc.pvar",
+    "results/plink/common_qc.psam",
+    "results/plink/ld_pruned.pgen",
+    "results/plink/ld_pruned.pvar",
+    "results/plink/ld_pruned.psam",
+]
+
+if config["run"].get("fastq_qc", True):
+    FINAL_OUTPUTS += expand("results/fastqc/{sample}_{read}_fastqc.zip", sample=SAMPLES, read=["r1", "r2"])
+
+if config["run"].get("population_structure", True):
+    FINAL_OUTPUTS += [
+        "results/population_structure/pca/pca10.scores.tsv",
+        "results/population_structure/kinship/centered_kinship.cXX.txt",
+        "results/population_structure/admixture/cv_error_by_k.tsv",
+    ]
+if config["run"].get("continuous_gwas", True):
+    FINAL_OUTPUTS += [
+        "results/gwas/continuous/main_lmm.standardized.tsv.gz",
+        "results/gwas/continuous/lead_snps.tsv",
+    ]
+if config["run"].get("binary_gwas", True):
+    FINAL_OUTPUTS += [
+        "results/gwas/binary/score.standardized.tsv.gz",
+        "results/gwas/binary/candidate_effects.tsv",
+        "results/gwas/binary/lead_snps.tsv",
+    ]
+if config["run"].get("cox_gwas", True):
+    FINAL_OUTPUTS += [
+        "results/gwas/cox/score.standardized.tsv.gz",
+        "results/gwas/cox/candidate_effects.tsv",
+        "results/gwas/cox/lead_snps.tsv",
+    ]
+if all(config["run"].get(x, True) for x in ["continuous_gwas", "binary_gwas", "cox_gwas"]):
+    FINAL_OUTPUTS += [
+        "results/gwas/integrated/harmonized_candidate_variants.tsv",
+        "results/gwas/integrated/union_lead_support_matrix.tsv",
+        "results/gwas/integrated/cross_model_locus_clusters.tsv",
+        "results/gwas/integrated/cross_model_locus_cluster_members.tsv",
+    ]
+    if config["run"].get("candidate_annotation", True):
+        FINAL_OUTPUTS += ["results/gwas/integrated/cross_model_candidate_genes.tsv"]
+
+rule all:
+    input:
+        FINAL_OUTPUTS

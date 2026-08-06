@@ -1,0 +1,2 @@
+# One row per sequenced library. Paths may be absolute or relative to the workflow directory.
+sample_id	r1	r2

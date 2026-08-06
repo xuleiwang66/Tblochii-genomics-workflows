@@ -1,0 +1,5 @@
+channels: [conda-forge, bioconda]
+dependencies:
+  - bcftools=1.23.1
+  - htslib
+  - python=3.11
