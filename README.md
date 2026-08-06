@@ -7,8 +7,6 @@ This repository contains two Snakemake workflows used for whole-genome resequenc
 * `wgs`: whole-genome resequencing workflow
 * `rnaseq`: RNA-seq workflow
 
-## Status
-
-Under development.
+## Notes
 
 Each workflow is independent. See the corresponding `README.md` and `config/config.yaml` before running.
