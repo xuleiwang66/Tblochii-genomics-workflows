@@ -1,0 +1,14 @@
+software	version	status	note
+fastp	1.3.4	confirmed	Read filtering
+FastQC	0.12.1	confirmed	Read-quality assessment
+MultiQC	1.35	confirmed	QC aggregation
+STAR	2.7.11b	confirmed	Genome indexing and alignment
+SAMtools	1.23.1	confirmed	BAM indexing and validation
+RSeQC	5.0.4	confirmed	Strandedness inference
+Subread featureCounts	2.1.1	confirmed	Gene-level fragment counting
+R	4.5.3	confirmed	Statistical analyses
+DESeq2	1.50.2	confirmed	Differential expression and VST
+data.table	1.17.8	confirmed	R data processing
+ggplot2	4.0.3	confirmed	Statistical graphics
+pheatmap	1.0.13	confirmed	Correlation heatmaps
+Python	3.6.8	confirmed	Original helper scripts

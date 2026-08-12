@@ -1,0 +1,5 @@
+channels: [conda-forge, bioconda]
+dependencies:
+  - r-base=4.5.3
+  - r-data.table=1.17.8
+  - bioconductor-deseq2=1.50.2

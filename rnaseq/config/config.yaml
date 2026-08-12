@@ -1,0 +1,108 @@
+samples: config/samples.tsv
+chromosomes: config/chromosomes.txt
+
+reference:
+  fasta: resources/Tov.fa
+  gff3: resources/Tov_rename.gff3
+
+run:
+  fastq_qc: true
+  strandedness_qc: true
+  tpm: true
+  differential_expression: true
+  pca_correlation: true
+  plots: false
+
+fastp:
+  detect_adapter_for_pe: true
+  adapter_sequence_r1: AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
+  adapter_sequence_r2: AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC
+  qualified_quality_phred: 6
+  unqualified_percent_limit: 50
+  n_base_limit: 15
+  length_required: 15
+  compression: 6
+  threads: 8
+
+fastqc:
+  threads: 2
+
+star_index:
+  sjdb_overhang: 149
+  genome_sa_index_nbases: 14
+  genome_chr_bin_nbits: 18
+  limit_genome_generate_ram: 240000000000
+  threads: 16
+
+star_alignment:
+  out_filter_multimap_nmax: 20
+  align_sj_overhang_min: 8
+  align_sjdb_overhang_min: 1
+  out_filter_mismatch_nover_lmax: 0.04
+  limit_bam_sort_ram: 28000000000
+  threads: 8
+
+strandedness:
+  sample_size: 200000
+  min_mapq: 30
+  configured_featurecounts_s: 0
+  minimum_consensus: 0.90
+
+featurecounts:
+  strandedness: 0
+  require_both_ends_mapped: true
+  count_chimeric_fragments: true
+  count_multimapping: false
+  allow_multi_overlap: false
+  threads: 8
+
+expression:
+  tpm_length_definition: gene_level_exon_union
+
+experimental_design:
+  source_levels: [C, L, Q]
+  treatment_levels: [control, early, late]
+  tissue_levels: [gill, hypothalamus, liver, pituitary]
+  contrasts:
+    - name: early_vs_control
+      numerator: early
+      denominator: control
+    - name: late_vs_control
+      numerator: late
+      denominator: control
+    - name: early_vs_late
+      numerator: early
+      denominator: late
+
+# Project-design checks are recorded as provenance and are not universal gates.
+design_validation:
+  expected_replicates_per_group: 3
+
+# Differential expression and VST use the same tissue-specific low-expression filter.
+deseq2:
+  min_count: 10
+  min_samples: 3
+  padj_cutoff: 0.05
+  absolute_log2fc_cutoff: 1.0
+  independent_filtering: true
+  lfc_shrinkage: false
+
+qc_warnings:
+  min_fastp_pass_rate: 0.80
+  min_fastp_q30_rate: 0.85
+  min_fastp_gc_content: 0.35
+  max_fastp_gc_content: 0.65
+  min_unique_mapping_rate: 0.70
+  review_unique_mapping_rate: 0.80
+  max_multimapping_rate: 0.30
+  max_unmapped_too_short_rate: 0.30
+  min_count_assigned_rate: 0.50
+  review_count_assigned_rate: 0.60
+  min_group_library_ratio: 0.30
+  max_group_library_ratio: 3.00
+  min_size_factor: 0.20
+  max_size_factor: 5.00
+  review_within_group_correlation: 0.80
+  flag_within_group_correlation: 0.70
+  review_robust_pc_distance: 6.0
+  flag_robust_pc_distance: 10.0

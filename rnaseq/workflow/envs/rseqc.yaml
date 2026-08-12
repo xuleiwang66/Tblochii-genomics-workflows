@@ -1,0 +1,3 @@
+channels: [conda-forge, bioconda]
+dependencies:
+  - rseqc=5.0.4

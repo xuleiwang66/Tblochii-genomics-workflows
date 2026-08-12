@@ -1,0 +1,103 @@
+configfile: "config/config.yaml"
+
+import csv
+from pathlib import Path
+
+
+def read_samples(path):
+    with open(path, encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        required = {
+            "sample_id", "r1", "r2", "source_cohort", "treatment",
+            "tissue", "biological_replicate", "replacement_pituitary"
+        }
+        missing = required - set(reader.fieldnames or [])
+        if missing:
+            raise ValueError(f"Missing samples.tsv columns: {sorted(missing)}")
+        rows = [dict(row) for row in reader if row.get("sample_id", "").strip()]
+    ids = [row["sample_id"].strip() for row in rows]
+    if len(ids) != len(set(ids)):
+        raise ValueError("Duplicated sample_id in samples.tsv")
+    return rows
+
+
+def read_lines(path):
+    with open(path, encoding="utf-8") as handle:
+        return [x.strip() for x in handle if x.strip() and not x.startswith("#")]
+
+
+SAMPLE_ROWS = read_samples(config["samples"])
+SAMPLES = [row["sample_id"].strip() for row in SAMPLE_ROWS]
+SAMPLE_INFO = {row["sample_id"].strip(): row for row in SAMPLE_ROWS}
+TISSUES = list(config["experimental_design"]["tissue_levels"])
+CONTRASTS = list(config["experimental_design"]["contrasts"])
+CONTRAST_NAMES = [x["name"] for x in CONTRASTS]
+CHROMOSOMES = read_lines(config["chromosomes"])
+REF = config["reference"]["fasta"]
+GFF3 = config["reference"]["gff3"]
+def fastq(wildcards, read):
+    return SAMPLE_INFO[wildcards.sample][read]
+
+
+def tissue_samples(tissue):
+    return [row["sample_id"].strip() for row in SAMPLE_ROWS if row["tissue"].strip() == tissue]
+
+
+include: "workflow/rules/reference.smk"
+include: "workflow/rules/qc.smk"
+include: "workflow/rules/alignment.smk"
+include: "workflow/rules/counting.smk"
+include: "workflow/rules/expression.smk"
+include: "workflow/rules/differential_expression.smk"
+include: "workflow/rules/pca_correlation.smk"
+
+FINAL_OUTPUTS = [
+    "results/reference/samples.validated.tsv",
+    "results/counts/raw_gene_counts.tsv",
+    "results/qc/featurecounts_by_sample.tsv",
+]
+
+if config["run"].get("fastq_qc", True):
+    FINAL_OUTPUTS += [
+        "results/qc/multiqc/rnaseq_qc.html",
+        "results/qc/fastp_qc_by_sample.tsv",
+    ]
+
+if config["run"].get("strandedness_qc", True):
+    FINAL_OUTPUTS += ["results/qc/strandedness_summary.tsv"]
+
+if config["run"].get("tpm", True):
+    FINAL_OUTPUTS += ["results/expression/tpm.tsv"]
+
+if config["run"].get("differential_expression", True):
+    FINAL_OUTPUTS += [
+        f"results/deseq2/{tissue}/{contrast}.complete.tsv"
+        for tissue in TISSUES for contrast in CONTRAST_NAMES
+    ]
+    FINAL_OUTPUTS += [
+        f"results/deseq2/{tissue}/{contrast}.significant.tsv"
+        for tissue in TISSUES for contrast in CONTRAST_NAMES
+    ]
+    FINAL_OUTPUTS += ["results/qc/DESeq2_DEG_summary.tsv"]
+
+if config["run"].get("pca_correlation", True):
+    FINAL_OUTPUTS += [
+        "results/qc/RNAseq_PCA_coordinates.tsv",
+        "results/qc/RNAseq_sample_correlations.tsv.gz",
+        "results/qc/RNAseq_sample_QC_warnings.tsv",
+    ]
+    FINAL_OUTPUTS += [f"results/expression/vst/{tissue}.tsv.gz" for tissue in TISSUES]
+
+if config["run"].get("plots", False):
+    FINAL_OUTPUTS += [
+        f"results/plots/pca/{tissue}.pdf" for tissue in TISSUES
+    ] + [
+        f"results/plots/correlation/{tissue}.pdf" for tissue in TISSUES
+    ] + [
+        f"results/plots/deg/{tissue}.{contrast}.volcano.pdf"
+        for tissue in TISSUES for contrast in CONTRAST_NAMES
+    ]
+
+rule all:
+    input:
+        FINAL_OUTPUTS
