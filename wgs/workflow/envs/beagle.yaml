@@ -1,4 +1,0 @@
-channels: [conda-forge, bioconda]
-dependencies:
-  - openjdk=17
-  - bcftools=1.23.1

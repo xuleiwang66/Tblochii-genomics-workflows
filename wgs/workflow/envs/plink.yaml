@@ -1,5 +1,0 @@
-channels: [conda-forge, bioconda]
-dependencies:
-  - plink2
-  - plink
-  - python=3.11

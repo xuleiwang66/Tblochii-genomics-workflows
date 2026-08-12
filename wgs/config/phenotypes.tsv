@@ -1,2 +1,0 @@
-# Required fields. LOE_status: 1=LOE event; 0=right-censored; 2=pre-target death.
-sample_id	fish_id	source_cohort	LOE_time_h	LOE_status	body_weight_g

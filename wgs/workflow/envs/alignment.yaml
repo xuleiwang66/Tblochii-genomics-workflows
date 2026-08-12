@@ -1,5 +1,0 @@
-channels: [conda-forge, bioconda]
-dependencies:
-  - bwa=0.7.19
-  - samtools=1.23.1
-  - python=3.11
